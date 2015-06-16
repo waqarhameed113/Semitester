@@ -62,9 +62,8 @@ char foo;
 
 //ARDUTESTER FEATURES
 
-//Remember LCD_PRINT or DEBUG_PRINT
-#define BUTTON_INST                              //Button Installed
-#define LCD_PRINT                                //Print on LCD
+//#define BUTTON_INST                              //Button Installed
+#//define LCD_PRINT                                //Print on LCD
 //Remember DEBUG_PRINT or ATSW
 //#define ATSW                                   //ArduTester Software Client Enabled
 #define DEBUG_PRINT                            //Print on Serial Port
@@ -92,10 +91,10 @@ char foo;
 #include <EEPROM.h>
 
 //LCD Output
-#ifdef LCD_PRINT
-#include <LiquidCrystal.h>
-LiquidCrystal lcd(7, 6, 5, 4, 3, 2);           //RS,E,D4,D5,D6,D7
-#endif
+//#ifdef LCD_PRINT
+//#include <LiquidCrystal.h>
+//LiquidCrystal lcd(7, 6, 5, 4, 3, 2);           //RS,E,D4,D5,D6,D7
+//#endif
 
 //UINT32_MAX
 #define UINT32_MAX            ((uint32_t)-1)
@@ -493,7 +492,7 @@ const unsigned int SmallCap_table[] = { 954, 903, 856, 814, 775, 740, 707, 676, 
 const unsigned int Inductor_table[] = { 4481, 3923, 3476, 3110, 2804, 2544, 2321, 2128, 1958, 1807, 1673, 1552, 1443, 1343, 1252, 1169, 1091, 1020, 953, 890, 831, 775, 721, 670, 621, 574, 527, 481, 434, 386, 334, 271 };
 
 //Bitmasks for Rl probe resistors based on probe ID
-const unsigned char Rl_table[] = { (1 << (TP1 * 2)), (1 << (TP2 * 2)), (1 << (TP3 * 2)) };
+const unsigned char Rl_table[] = { (1 << 4), (1 << 5), (1 << 6) };
 //Bitmasks for ADC pins based on probe ID
 const unsigned char ADC_table[] = { (1 << TP1), (1 << TP2), (1 << TP3) };
 
@@ -513,34 +512,14 @@ byte                          ErrFnd;            //An Error is occured
 void setup()
 {
 	byte                        Test;              //Test value 
-	//Disable power on spi, twi, timer2
-	power_spi_disable();
-	power_twi_disable();
-	power_timer2_disable();
-#ifdef LCD_PRINT  
-	lcd.begin(16, 2);
-	delay(5);
-	//Symbols for components
-	lcd.createChar(LCD_CHAR_DIODE1, DiodeIcon1);  //Diode symbol |<|
-	lcd.createChar(LCD_CHAR_DIODE2, DiodeIcon2);  //Diode symbol |<|
-	lcd.createChar(LCD_CHAR_CAP, CapIcon);        //Capacitor symbol ||
-	lcd.createChar(LCD_CHAR_RESIS1, ResIcon1);    //Resistor symbol [  
-	lcd.createChar(LCD_CHAR_RESIS2, ResIcon2);    //Resistor symbol ] 
-	lcd.createChar(LCD_CHAR_FLAG, FlagIcon);      //Flag symbol
-	lcd.home();
-	lcd_fixed_string(Splash_str);
-	lcd_fixed_string(Version_str);
-#endif
-#ifdef ATSW                                    //Client Begin
-	Serial.begin(19200);
-#endif
+	
 #ifdef DEBUG_PRINT   
 	Serial.begin(9600);                          //Serial Output
 #endif
 	//Setup µC
 	ADCSRA = (1 << ADEN) | ADC_CLOCK_DIV;          //Enable ADC and set clock divider 
 	MCUSR &= ~(1 << WDRF);                         //Reset watchdog flag 
-	DIDR0 = 0b00110111;
+	
 	wdt_disable();                                 //Disable watchdog 
 	//Default offsets and values
 	Config.Samples = ADC_SAMPLES;                  //Number of ADC samples 
@@ -4383,7 +4362,7 @@ void ShowAdjust(void)
 #ifdef BUTTON_INST
 	TestKey(USER_WAIT, 11);                      //Let the user read
 #else
-	delya(3000);
+	delay(3000);
 #endif
 	//Display C-Zero
 	lcd_clear();
