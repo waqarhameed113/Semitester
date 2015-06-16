@@ -103,9 +103,9 @@ char foo;
 #define ADC_PORT              PORTC              //ADC port data register 
 #define ADC_DDR               DDRC               //ADC port data direction register 
 #define ADC_PIN               PINC               //Port input pins register 
-#define TP1                   0                  //Test pin 1 (=0) 
-#define TP2                   1                  //Test pin 2 (=1) 
-#define TP3                   2                  //Test pin 3 (=2) 
+#define TP1                   4                  //Test pin 1 (=0) 
+#define TP2                   5                  //Test pin 2 (=1) 
+#define TP3                   6                  //Test pin 3 (=2) 
 /*
 Probe resistors:
 The resistors must be connected to the lower 6 pins of the port in
@@ -146,7 +146,7 @@ Exact values of probe resistors.
 - Standard value for Rh is 470k Ohms.
 */
 //Rl in Ohms
-#define R_LOW                 680
+#define R_LOW                 1000
 //Rh in Ohms
 #define R_HIGH                470000
 //Offset for systematic error of resistor measurement with Rh (470k) in Ohms.
@@ -492,7 +492,7 @@ const unsigned int SmallCap_table[] = { 954, 903, 856, 814, 775, 740, 707, 676, 
 const unsigned int Inductor_table[] = { 4481, 3923, 3476, 3110, 2804, 2544, 2321, 2128, 1958, 1807, 1673, 1552, 1443, 1343, 1252, 1169, 1091, 1020, 953, 890, 831, 775, 721, 670, 621, 574, 527, 481, 434, 386, 334, 271 };
 
 //Bitmasks for Rl probe resistors based on probe ID
-const unsigned char Rl_table[] = { (1 << 4), (1 << 5), (1 << 6) };
+const unsigned char Rl_table[] = { (1 << 0), (1 << 2), (1 << 4) };
 //Bitmasks for ADC pins based on probe ID
 const unsigned char ADC_table[] = { (1 << TP1), (1 << TP2), (1 << TP3) };
 
@@ -573,7 +573,7 @@ void loop()
 	BJT.I_CE0 = 0;
 	//Reset hardware
 	SetADCHiz();                                   //Set all pins of ADC port as input  
-	lcd_clear();                                   //Clear LCD
+	//lcd_clear();                                   //Clear LCD
 #ifdef LCD_PRINT 
 	lcd_fixed_string(Splash_str);
 	lcd_fixed_string(Version_str);
@@ -820,9 +820,9 @@ byte AllProbesShorted(void)
 {
 	byte                        Flag = 0;          //Return value
 	//Check all possible combinations
-	Flag = ShortedProbes(TP1, TP2);
-	Flag += ShortedProbes(TP1, TP3);
-	Flag += ShortedProbes(TP2, TP3);
+	Flag = ShortedProbes(0, 1);
+	Flag += ShortedProbes(0, 2);
+	Flag += ShortedProbes(1, 2);
 	return Flag;
 }
 
