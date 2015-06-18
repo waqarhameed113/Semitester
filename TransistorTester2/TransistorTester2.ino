@@ -1,3 +1,20 @@
+
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_PCD8544.h>
+
+
+// Software SPI (slower updates, more flexible pin options):
+// pin 7 - Serial clock out (SCLK)
+// pin 6 - Serial data out (DIN)
+// pin 5 - Data/Command select (D/C)
+// pin 4 - LCD chip select (CS)
+// pin 3 - LCD reset (RST)
+Adafruit_PCD8544 display = Adafruit_PCD8544(6, 5, 4, 2, 3);
+
+
+
+
 /*
 
 ___           ___          _____          ___                       ___           ___                       ___           ___
@@ -62,8 +79,9 @@ char foo;
 
 //ARDUTESTER FEATURES
 
+//Remember LCD_PRINT or DEBUG_PRINT
 //#define BUTTON_INST                              //Button Installed
-#//define LCD_PRINT                                //Print on LCD
+//#define LCD_PRINT                                //Print on LCD
 //Remember DEBUG_PRINT or ATSW
 //#define ATSW                                   //ArduTester Software Client Enabled
 #define DEBUG_PRINT                            //Print on Serial Port
@@ -91,10 +109,10 @@ char foo;
 #include <EEPROM.h>
 
 //LCD Output
-//#ifdef LCD_PRINT
-//#include <LiquidCrystal.h>
-//LiquidCrystal lcd(7, 6, 5, 4, 3, 2);           //RS,E,D4,D5,D6,D7
-//#endif
+#ifdef LCD_PRINT
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);           //RS,E,D4,D5,D6,D7
+#endif
 
 //UINT32_MAX
 #define UINT32_MAX            ((uint32_t)-1)
@@ -103,9 +121,9 @@ char foo;
 #define ADC_PORT              PORTC              //ADC port data register 
 #define ADC_DDR               DDRC               //ADC port data direction register 
 #define ADC_PIN               PINC               //Port input pins register 
-#define TP1                   4                  //Test pin 1 (=0) 
-#define TP2                   5                  //Test pin 2 (=1) 
-#define TP3                   6                  //Test pin 3 (=2) 
+#define TP1                   0                  //Test pin 1 (=0) 
+#define TP2                   1                  //Test pin 2 (=1) 
+#define TP3                   2                  //Test pin 3 (=2) 
 /*
 Probe resistors:
 The resistors must be connected to the lower 6 pins of the port in
@@ -121,7 +139,7 @@ following sequence:
 #define R_DDR                 DDRB               //Port data direction register
 
 //Push button
-#define TEST_BUTTON           A3                 //Test/start push button (low active)
+#define TEST_BUTTON           A7                 //Test/start push button (low active)
 
 //Button Delay
 #define CYCLE_DELAY           3000
@@ -148,7 +166,7 @@ Exact values of probe resistors.
 //Rl in Ohms
 #define R_LOW                 1000
 //Rh in Ohms
-#define R_HIGH                470000
+#define R_HIGH                470000UL
 //Offset for systematic error of resistor measurement with Rh (470k) in Ohms.
 #define RH_OFFSET             700 
 /*
@@ -492,7 +510,7 @@ const unsigned int SmallCap_table[] = { 954, 903, 856, 814, 775, 740, 707, 676, 
 const unsigned int Inductor_table[] = { 4481, 3923, 3476, 3110, 2804, 2544, 2321, 2128, 1958, 1807, 1673, 1552, 1443, 1343, 1252, 1169, 1091, 1020, 953, 890, 831, 775, 721, 670, 621, 574, 527, 481, 434, 386, 334, 271 };
 
 //Bitmasks for Rl probe resistors based on probe ID
-const unsigned char Rl_table[] = { (1 << 0), (1 << 2), (1 << 4) };
+const unsigned char Rl_table[] = { (1 << (TP1 * 2)), (1 << (TP2 * 2)), (1 << (TP3 * 2)) };
 //Bitmasks for ADC pins based on probe ID
 const unsigned char ADC_table[] = { (1 << TP1), (1 << TP2), (1 << TP3) };
 
@@ -512,14 +530,37 @@ byte                          ErrFnd;            //An Error is occured
 void setup()
 {
 	byte                        Test;              //Test value 
-	
+	//Disable power on spi, twi, timer2
+	display.begin();
+	display.setContrast(63);
+	display.clearDisplay();
+	//power_spi_disable();
+	//power_twi_disable();
+	//power_timer2_disable();
+#ifdef LCD_PRINT  
+	lcd.begin(16, 2);
+	delay(5);
+	//Symbols for components
+	lcd.createChar(LCD_CHAR_DIODE1, DiodeIcon1);  //Diode symbol |<|
+	lcd.createChar(LCD_CHAR_DIODE2, DiodeIcon2);  //Diode symbol |<|
+	lcd.createChar(LCD_CHAR_CAP, CapIcon);        //Capacitor symbol ||
+	lcd.createChar(LCD_CHAR_RESIS1, ResIcon1);    //Resistor symbol [  
+	lcd.createChar(LCD_CHAR_RESIS2, ResIcon2);    //Resistor symbol ] 
+	lcd.createChar(LCD_CHAR_FLAG, FlagIcon);      //Flag symbol
+	lcd.home();
+	lcd_fixed_string(Splash_str);
+	lcd_fixed_string(Version_str);
+#endif
+#ifdef ATSW                                    //Client Begin
+	Serial.begin(19200);
+#endif
 #ifdef DEBUG_PRINT   
 	Serial.begin(9600);                          //Serial Output
 #endif
 	//Setup µC
 	ADCSRA = (1 << ADEN) | ADC_CLOCK_DIV;          //Enable ADC and set clock divider 
 	MCUSR &= ~(1 << WDRF);                         //Reset watchdog flag 
-	
+	DIDR0 = 0b11111111;
 	wdt_disable();                                 //Disable watchdog 
 	//Default offsets and values
 	Config.Samples = ADC_SAMPLES;                  //Number of ADC samples 
@@ -557,7 +598,7 @@ void loop()
 #ifdef BUTTON_INST
 	Test = TestKey(0, 0);                        //Wait user
 #else
-	delay(3000);                                 //No button installed, Wait 3 seconds
+	delay(100);                                 //No button installed, Wait 3 seconds
 	Test = 1;                                      //No button, no menu :-)
 #endif
 #ifdef WDT_enabled
@@ -573,7 +614,7 @@ void loop()
 	BJT.I_CE0 = 0;
 	//Reset hardware
 	SetADCHiz();                                   //Set all pins of ADC port as input  
-	//lcd_clear();                                   //Clear LCD
+	lcd_clear();                                   //Clear LCD
 #ifdef LCD_PRINT 
 	lcd_fixed_string(Splash_str);
 	lcd_fixed_string(Version_str);
@@ -820,9 +861,9 @@ byte AllProbesShorted(void)
 {
 	byte                        Flag = 0;          //Return value
 	//Check all possible combinations
-	Flag = ShortedProbes(0, 1);
-	Flag += ShortedProbes(0, 2);
-	Flag += ShortedProbes(1, 2);
+	Flag = ShortedProbes(TP1, TP2);
+	Flag += ShortedProbes(TP1, TP3);
+	Flag += ShortedProbes(TP2, TP3);
 	return Flag;
 }
 
