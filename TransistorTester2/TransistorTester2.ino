@@ -164,7 +164,7 @@ Exact values of probe resistors.
 - Standard value for Rh is 470k Ohms.
 */
 //Rl in Ohms
-#define R_LOW                 1000
+#define R_LOW                 680
 //Rh in Ohms
 #define R_HIGH                470000UL
 //Offset for systematic error of resistor measurement with Rh (470k) in Ohms.
@@ -534,6 +534,7 @@ void setup()
 	display.begin();
 	display.setContrast(63);
 	display.clearDisplay();
+	display.display();
 	//power_spi_disable();
 	//power_twi_disable();
 	//power_timer2_disable();
@@ -576,18 +577,7 @@ void setup()
 #endif
 	//Init
 	LoadAdjust();                                  //Load adjustment values
-#ifdef DEBUG_PRINT
-	Serial.print(X("A  R  D  U  T  E  S  T  E  R "));
-	lcd_fixed_string(Version_str);               //Print Ardutester Version
-	Serial.println();
-	Serial.println(X("      By PighiXXX & PaoloP"));
-	Serial.println(X("original version by Markus Reschke"));
-	Serial.println();
-#ifdef BUTTON_INST
-	Serial.print(X("Press Button to Probe"));
-	Serial.println(X(", long press enter Menu"));
-#endif
-#endif
+
 	delay(100);
 }
 
@@ -634,18 +624,17 @@ void loop()
 	{
 		if (AllProbesShorted() == 3)                 //All probes Shorted!
 		{
-#ifdef DEBUG_PRINT
-			Serial.println();
-#endif
+			display.clearDisplay();
 			lcd_fixed_string(Remove_str);            //Display: Remove/Create
-			lcd_line(2);
+			
 			lcd_fixed_string(ShortCircuit_str);      //Display: short circuit! 
+			display.display();
 		}
 		else
 		{
-			//Display start of probing
-			lcd_line(2);                             //Move to line #2
+			
 			lcd_fixed_string(Running_str);           //Display: probing...
+			display.display();
 			DischargeProbes();
 			if (Check.Found == COMP_ERROR)           //Discharge failed
 			{                                        //Only for Standalone Version!                                     
@@ -671,8 +660,8 @@ void loop()
 					(Check.Found == COMP_RESISTOR))
 				{
 #ifdef DEBUG_PRINT
-					Serial.println();
-					Serial.println(X("Wait a moment..."));
+					display.println();
+					display.println(X("Wait a moment..."));
 #else
 					//Tell user to be patient with large caps
 					lcd_clear_line(2);
@@ -697,42 +686,42 @@ void loop()
 #endif          
 				//Call output function based on component type
 #ifdef DEBUG_PRINT   
-				Serial.print("Found: ");
+				display.print("Found: ");
 				//Components ID's
 				switch (Check.Found)
 				{
 				case COMP_ERROR:
-					Serial.println(X("Component Error!"));
+					display.println(X("Component Error!"));
 					break;
 				case COMP_NONE:
-					Serial.println(X("No Component!"));
+					display.println(X("No Component!"));
 					break;
 				case COMP_RESISTOR:
-					Serial.println(X("Resistor"));
+					display.println(X("Resistor"));
 					break;
 				case COMP_CAPACITOR:
-					Serial.println(X("Capacitor"));
+					display.println(X("Capacitor"));
 					break;
 				case COMP_INDUCTOR:
-					Serial.println(X("Inductor"));
+					display.println(X("Inductor"));
 					break;
 				case COMP_DIODE:
-					Serial.println(X("Diode"));
+					display.println(X("Diode"));
 					break;
 				case COMP_BJT:
-					Serial.println(X("BJT"));
+					display.println(X("BJT"));
 					break;
 				case COMP_FET:
-					Serial.println(X("FET"));
+					display.println(X("FET"));
 					break;
 				case COMP_IGBT:
-					Serial.println(X("IGBT"));
+					display.println(X("IGBT"));
 					break;
 				case COMP_TRIAC:
-					Serial.println(X("TRIAC"));
+					display.println(X("TRIAC"));
 					break;
 				case COMP_THYRISTOR:
-					Serial.println(X("Thyristor"));
+					display.println(X("Thyristor"));
 					break;
 				}
 #endif
@@ -769,14 +758,14 @@ void loop()
 					ShowFail();
 				}
 #ifdef ATSW                            //Client output
-				Serial.println("@>");
-				Serial.println(Check.Found);
-				Serial.println("|");
-				Serial.println(Check.Type);
-				Serial.println("|");
-				Serial.println(Check.Done);
-				Serial.println("|");
-				Serial.println("@<");
+				display.println("@>");
+				display.println(Check.Found);
+				display.println("|");
+				display.println(Check.Type);
+				display.println("|");
+				display.println(Check.Done);
+				display.println("|");
+				display.println("@<");
 				//Component spedific output
 #endif
 				//Component was found
@@ -785,6 +774,7 @@ void loop()
 			}
 		}
 	}
+	display.display();
 	delay(1000);                                   //Let the user read the text
 	wdt_disable();                                 //Disable watchdog
 }
@@ -3126,24 +3116,14 @@ byte MeasureInductor(Resistor_Type *Resistor)
 //Clear the display 
 void lcd_clear(void)
 {
-#ifdef LCD_PRINT
-	lcd.clear();
-	delay(2);                                    //LCD needs some time for processing
-#endif
-#ifdef DEBUG_PRINT
-	Serial.println();
-#endif
+	display.clearDisplay();
 }
 
 //Move cursor to the first position of a specified line
 void lcd_line(unsigned char Line)
 {
-#ifdef LCD_PRINT
-	lcd.setCursor(0, Line);
-#endif
-#ifdef DEBUG_PRINT
-	Serial.println();
-#endif
+	display.println();
+
 }
 
 //Clear single line of display
@@ -3159,7 +3139,7 @@ void lcd_clear_line(unsigned char Line)
 	lcd_line(Line);                              //Go back to beginning of line
 #endif
 #ifdef DEBUG_PRINT
-	Serial.println();
+	display.println();
 #endif
 }
 
@@ -3189,19 +3169,19 @@ void lcd_string(char *String)
 //Display a fixed string stored in PROGMEM
 void lcd_fixed_string(const unsigned char *String)
 {
+		
+	
+
 	while (pgm_read_byte(String) != 0x00)
-		lcd_data(pgm_read_byte(String++));           //Send character
+	lcd_data(pgm_read_byte(String++));           //Send character
 }
 
 //Send data to the LCD
 void lcd_data(unsigned char Data)
 {
-#ifdef LCD_PRINT                  
-	lcd.write(Data);                             //Send data to LCD
-#endif
-#ifdef DEBUG_PRINT                  
-	Serial.write(Data);                          //Send data to Serial
-#endif
+	Serial.write(Data);
+	display.write(Data);                          //Send data to Serial
+
 }
 
 //USER FUNCTIONS
@@ -4609,16 +4589,16 @@ void MainMenu(void)
 	{
 		boolean                 cmdexec = false;     //CMD Exec Flag
 		//Show Menu
-		Serial.println();
-		Serial.println(X("** MAIN MENU"));
-		Serial.println();
-		Serial.println(X("  1) PWM"));
-		Serial.println(X("  2) SelfTest"));
-		Serial.println(X("  3) Adjust"));
-		Serial.println(X("  4) Save"));
-		Serial.println(X("  5) Show"));
-		Serial.println(X("  6) Default"));
-		Serial.print(X("  0) Exit       >"));
+		display.println();
+		display.println(X("** MAIN MENU"));
+		display.println();
+		display.println(X("  1) PWM"));
+		display.println(X("  2) SelfTest"));
+		display.println(X("  3) Adjust"));
+		display.println(X("  4) Save"));
+		display.println(X("  5) Show"));
+		display.println(X("  6) Default"));
+		display.print(X("  0) Exit       >"));
 		//Check for incoming serial data:
 		do
 		{
@@ -4627,54 +4607,54 @@ void MainMenu(void)
 				//Read incoming serial data:
 				char inChar = Serial.read();
 				//User Feedback
-				Serial.println(inChar);
+				display.println(inChar);
 				switch ((byte)inChar - 48)
 				{
 				case 1:                              //Pwm Menu
-					Serial.println();
+					display.println();
 					Frequency = selFreq();
-					Serial.println();
-					Serial.println(X("Info:"));
-					Serial.println(X("  Short  Press +"));
-					Serial.println(X("  Long   Press -"));
-					Serial.println(X("  Double Press Exit"));
+					display.println();
+					display.println(X("Info:"));
+					display.println(X("  Short  Press +"));
+					display.println(X("  Long   Press -"));
+					display.println(X("  Double Press Exit"));
 					PWM_Tool(Frequency);
-					Serial.println();
+					display.println();
 					cmdexec = true;
 					break;
 				case 2:                              //Selftest
 					SelfTest();
-					Serial.println();
+					display.println();
 					cmdexec = true;
 					break;
 				case 3:                              //Adjust
 					SelfAdjust();
-					Serial.println();
+					display.println();
 					cmdexec = true;
 					break;
 				case 4:                              //Save
 					SaveEEP();
-					Serial.println();
+					display.println();
 					cmdexec = true;
 				case 5:                              //Show
 					ShowAdjust();
-					Serial.println();
+					display.println();
 					cmdexec = true;
 					break;
 				case 6:                               //Default Parameters
 					DefaultPar();
-					Serial.println();
+					display.println();
 					cmdexec = true;
 					break;
 				case 0:                              //Exit
 					cmdexec = true;
 					doexit = true;
-					Serial.println();
-					Serial.println(X("Done. Exit"));
+					display.println();
+					display.println(X("Done. Exit"));
 					return;
 				default:
 					//Redo
-					Serial.print(X("                >"));
+					display.print(X("                >"));
 					cmdexec = false;
 					doexit = false;
 				}
@@ -4691,16 +4671,16 @@ void MainMenu(void)
 unsigned int selFreq(void)
 {
 	boolean                 cmdexec = false;     //CMD Exec Flag
-	Serial.println(X("Select Frequency:"));
+	display.println(X("Select Frequency:"));
 	for (int f; f<8; f++)
 	{
-		Serial.print(X("  "));
-		Serial.print(f + 1);
-		Serial.print(X(") "));
+		display.print(X("  "));
+		display.print(f + 1);
+		display.print(X(") "));
 		DisplayValue(PWM_Freq_table[f], 0, 0);
-		Serial.println(X("Hz"));
+		display.println(X("Hz"));
 	}
-	Serial.print(X("                >"));
+	display.print(X("                >"));
 	do
 	{
 		if (Serial.available() > 0)
@@ -4710,14 +4690,14 @@ unsigned int selFreq(void)
 			if (selNum>0 && selNum<9)
 			{
 				//User Feedback
-				Serial.println(inChar);
+				display.println(inChar);
 				cmdexec = true;
 				return PWM_Freq_table[selNum - 1];
 			}
 			else
 			{
 				//Redo
-				Serial.println(X("                >"));
+				display.println(X("                >"));
 				cmdexec = false;
 			}
 		}
