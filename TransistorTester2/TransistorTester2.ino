@@ -561,7 +561,7 @@ void setup()
 	//Setup µC
 	ADCSRA = (1 << ADEN) | ADC_CLOCK_DIV;          //Enable ADC and set clock divider 
 	MCUSR &= ~(1 << WDRF);                         //Reset watchdog flag 
-	DIDR0 = 0b11111111;
+	//DIDR0 = 0b11111111;
 	wdt_disable();                                 //Disable watchdog 
 	//Default offsets and values
 	Config.Samples = ADC_SAMPLES;                  //Number of ADC samples 
@@ -615,18 +615,12 @@ void loop()
 	Config.U_Bandgap = ReadU(0x0e);                //Get voltage of bandgap reference 
 	Config.Samples = ADC_SAMPLES;                  //Set samples back to default 
 	Config.U_Bandgap += Config.RefOffset;          //Add voltage offset 
-	if (Test == 2)                                   //Long Press
-	{
-		wdt_disable();                               //Disable watchdog
-		MainMenu();                                  //Main Menu
-	}
-	else
-	{
-		if (AllProbesShorted() == 3)                 //All probes Shorted!
+	
+		if (AllProbesShorted() >= 3)                 //All probes Shorted!
 		{
-			display.clearDisplay();
-			lcd_fixed_string(Remove_str);            //Display: Remove/Create
 			
+			lcd_fixed_string(Remove_str);            //Display: Remove/Create
+			display.println();
 			lcd_fixed_string(ShortCircuit_str);      //Display: short circuit! 
 			display.display();
 		}
@@ -659,34 +653,27 @@ void loop()
 				if ((Check.Found == COMP_NONE) ||
 					(Check.Found == COMP_RESISTOR))
 				{
-#ifdef DEBUG_PRINT
-					display.println();
-					display.println(X("Wait a moment..."));
-#else
-					//Tell user to be patient with large caps
-					lcd_clear_line(2);
-					lcd_fixed_string(Running_str);
-					lcd_data('.');
-#endif
+
+					display.print(X("\n\nWait...."));
+					display.display();
+
+					
 					//Check all possible combinations
 					MeasureCap(TP3, TP1, 0);
-#ifdef LCD_PRINT
-					lcd_data('.');
-#endif
+
 					MeasureCap(TP3, TP2, 1);
-#ifdef LCD_PRINT
-					lcd_data('.');
-#endif
+
 					MeasureCap(TP2, TP1, 2);
 				}
-				//Clear LCD
+				
 				lcd_clear();
+				
 #ifdef BUTTON_INST
 				pinMode(TEST_BUTTON, INPUT_PULLUP);  //Reinitialize the pushbutton pin as an input
 #endif          
 				//Call output function based on component type
-#ifdef DEBUG_PRINT   
-				display.print("Found: ");
+#ifdef DEBUG_PRINT  
+				display.print("Found:");
 				//Components ID's
 				switch (Check.Found)
 				{
@@ -724,6 +711,7 @@ void loop()
 					display.println(X("Thyristor"));
 					break;
 				}
+				
 #endif
 				switch (Check.Found)
 				{
@@ -757,25 +745,15 @@ void loop()
 				default:                             //No component found
 					ShowFail();
 				}
-#ifdef ATSW                            //Client output
-				display.println("@>");
-				display.println(Check.Found);
-				display.println("|");
-				display.println(Check.Type);
-				display.println("|");
-				display.println(Check.Done);
-				display.println("|");
-				display.println("@<");
-				//Component spedific output
-#endif
+				display.display();
 				//Component was found
 				RunsMissed = 0;                        //Reset counter
 				RunsPassed++;                          //Increase counter
 			}
 		}
-	}
-	display.display();
-	delay(1000);                                   //Let the user read the text
+	
+	
+	delay(4000);                                   //Let the user read the text
 	wdt_disable();                                 //Disable watchdog
 }
 
@@ -849,9 +827,9 @@ byte ShortedProbes(byte Probe1, byte Probe2)
 //Check for a short circuit between all probes
 byte AllProbesShorted(void)
 {
-	byte                        Flag = 0;          //Return value
+	byte                        Flag = 1;          //Return value
 	//Check all possible combinations
-	Flag = ShortedProbes(TP1, TP2);
+	Flag += ShortedProbes(TP1, TP2);
 	Flag += ShortedProbes(TP1, TP3);
 	Flag += ShortedProbes(TP2, TP3);
 	return Flag;
@@ -3153,7 +3131,7 @@ void lcd_testpin(unsigned char Probe)
 //Display a space
 void lcd_space(void)
 {
-	lcd_data(' ');
+	display.print(' ');
 }
 
 //Display a string
@@ -3179,7 +3157,7 @@ void lcd_fixed_string(const unsigned char *String)
 //Send data to the LCD
 void lcd_data(unsigned char Data)
 {
-	Serial.write(Data);
+	
 	display.write(Data);                          //Send data to Serial
 
 }
@@ -3412,6 +3390,7 @@ byte TestKey(unsigned int Timeout, byte Mode)
 void ShowFail(void)
 {
 	//Display info
+	display.clearDisplay();
 	lcd_fixed_string(Failed1_str);                 //Display: No component
 	lcd_line(2);                                   //Move to line #2
 	lcd_fixed_string(Failed2_str);                 //Display: found!
@@ -3629,6 +3608,7 @@ void ShowBJT(void)
 	}
 	//Display pins
 	lcd_space();
+	lcd_line(2);
 	lcd_fixed_string(EBC_str);                     //Display: EBC= 
 	lcd_testpin(BJT.E);                            //Display emitter pin 
 	lcd_testpin(BJT.B);                            //Display base pin 
@@ -3732,15 +3712,15 @@ void Show_FET_IGBT_Extras(byte Symbol)
 	//Instrinsic diode
 	if (Check.Diodes > 0)
 	{
-		lcd_space();                                 //Display space
-		lcd_data(Symbol);                            //Display diode symbol
+		                                 //Display space
+		//lcd_data(Symbol);                            //Display diode symbol
 	}
 #ifdef BUTTON_INST
 	TestKey(USER_WAIT, 11);                      //Next page
 #else
 	delay(3000);
 #endif
-	lcd_clear();
+	
 	//Gate threshold voltage
 	lcd_fixed_string(Vth_str);                     //Display: Vth
 	DisplayValue(FET.V_th, -3, 'V');               //Display V_th in mV    
@@ -3761,21 +3741,24 @@ void ShowFET(void)
 	if (Check.Type & TYPE_N_CHANNEL)               //n-channel
 	{
 		Data = 'N';
-		Symbol = LCD_CHAR_DIODE2;                    // '|<|' cathode pointing to drain
+		                    // '|<|' cathode pointing to drain
 	}
 	else                                           //p-channel
 	{
 		Data = 'P';
-		Symbol = LCD_CHAR_DIODE1;                    // '|>|' cathode pointing to source
+		                   // '|>|' cathode pointing to source
 	}
 	//Display type
+	
 	if (Check.Type & TYPE_MOSFET)                  //MOSFET
 		lcd_fixed_string(MOS_str);                   //Display: MOS
 	else                                           //JFET
 		lcd_data('J');                               //Display: J 
+	
 	lcd_fixed_string(FET_str);                     //Display: FET 
+	lcd_line(2);
 	//Display channel type
-	lcd_space();
+	
 	lcd_data(Data);                                //Display: N / P
 	lcd_fixed_string(Channel_str);                 //Display: -ch
 	//Display mode
@@ -3802,12 +3785,14 @@ void ShowFET(void)
 		lcd_testpin(FET.D);                          //Display drain pin
 		lcd_testpin(FET.S);                          //Display source pin
 	}
+	display.println();
 	//Extra data for MOSFET in enhancement mode
 	if (Check.Type & (TYPE_ENHANCEMENT | TYPE_MOSFET))
 	{
 		//Show diode, V_th and Cgs
 		Show_FET_IGBT_Extras(Symbol);
 	}
+	
 }
 
 //Show IGBT  
